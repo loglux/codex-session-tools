@@ -62,7 +62,7 @@ expected_rollout_path="$new_rollout_prefix/$rollout_base"
 
 original_same_cwd_count=$(sqlite3 "$SOURCE_DB" "select count(*) from threads where cwd = $sample_cwd_sql;")
 
-CODEX_STATE_DB="$TEST_DB" sh "$ROOT_DIR/scripts/rebind_codex_threads_by_cwd.sh" \
+CODEX_STATE_DB="$TEST_DB" sh "$ROOT_DIR/scripts/codex_migrate.sh" \
   --old-cwd "$sample_cwd" \
   --new-cwd "$new_group_cwd" \
   --no-backup >/dev/null
@@ -73,7 +73,7 @@ copied_new_group_count=$(sqlite3 "$TEST_DB" "select count(*) from threads where 
 source_still_original=$(sqlite3 "$SOURCE_DB" "select count(*) from threads where cwd = $new_group_cwd_sql;")
 [ "$source_still_original" = "0" ]
 
-CODEX_STATE_DB="$TEST_DB" sh "$ROOT_DIR/scripts/rebind_codex_thread.sh" \
+CODEX_STATE_DB="$TEST_DB" sh "$ROOT_DIR/scripts/codex_migrate.sh" \
   --thread-id "$sample_id" \
   --new-cwd "$new_single_cwd" \
   --no-backup >/dev/null
@@ -81,7 +81,7 @@ CODEX_STATE_DB="$TEST_DB" sh "$ROOT_DIR/scripts/rebind_codex_thread.sh" \
 actual_single_cwd=$(sqlite3 "$TEST_DB" "select cwd from threads where id = $sample_id_sql;")
 [ "$actual_single_cwd" = "$new_single_cwd" ]
 
-CODEX_STATE_DB="$TEST_DB" sh "$ROOT_DIR/scripts/migrate_codex_paths.sh" \
+CODEX_STATE_DB="$TEST_DB" sh "$ROOT_DIR/scripts/codex_migrate.sh" \
   --thread-id "$sample_id" \
   --old-rollout-prefix "$rollout_dir" \
   --new-rollout-prefix "$new_rollout_prefix" \

@@ -28,12 +28,12 @@ insert into threads values
   ('t4', '/misc', '/misc', 'quote', 4, 40);
 EOF
 
-CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/migrate_codex_paths.sh" \
+CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/codex_migrate.sh" \
   --old-cwd /old/project \
   --new-cwd "/new/oleg's-project" \
   --show-only >/dev/null
 
-CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/migrate_codex_paths.sh" \
+CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/codex_migrate.sh" \
   --all-threads \
   --old-rollout-prefix /old/home/.codex/sessions \
   --new-rollout-prefix /new/home/.codex/sessions \
@@ -47,7 +47,7 @@ rollout_t3=$(sqlite3 "$DB_PATH" "select rollout_path from threads where id = 't3
 [ "$rollout_t2" = "/tmp/keep-/old/home/.codex/sessions/b.log" ]
 [ "$rollout_t3" = "/new/home/.codex/sessions/c.log" ]
 
-CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/rebind_codex_thread.sh" \
+CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/codex_migrate.sh" \
   --thread-id t4 \
   --new-cwd "/quoted/oleg's-repo" \
   --no-backup >/dev/null
@@ -55,7 +55,7 @@ CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/rebind_codex_thread.sh" \
 t4_cwd=$(sqlite3 "$DB_PATH" "select cwd from threads where id = 't4';")
 [ "$t4_cwd" = "/quoted/oleg's-repo" ]
 
-CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/rebind_codex_threads_by_cwd.sh" \
+CODEX_STATE_DB="$DB_PATH" sh "$ROOT_DIR/scripts/codex_migrate.sh" \
   --old-cwd /old/project \
   --new-cwd /new/project \
   --no-backup >/dev/null

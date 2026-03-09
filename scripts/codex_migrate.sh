@@ -17,24 +17,55 @@ ALL_THREADS=0
 
 usage() {
   cat <<'EOF'
-Usage:
-  migrate_codex_paths.sh [selection] [rewrite] [options]
+Usage
+  codex_migrate.sh [selector] [rewrite] [options]
 
-Selection:
-  --thread-id ID              Update one specific thread
-  --old-cwd PATH              Update all threads with this cwd
-  --all-threads               Update all threads
+Choose exactly one selector
+  --thread-id ID
+      Match one thread by id
+  --old-cwd PATH
+      Match all threads with this cwd
+  --all-threads
+      Match every thread
 
-Rewrite:
-  --new-cwd PATH              New cwd value to write
-  --old-rollout-prefix PATH   Old rollout_path prefix to replace
-  --new-rollout-prefix PATH   New rollout_path prefix to write
+Choose one or both rewrite actions
+  --new-cwd PATH
+      Write a new cwd
+  --old-rollout-prefix PATH --new-rollout-prefix PATH
+      Rewrite rollout_path only when it starts with the old prefix
 
-Options:
-  --db PATH                   Path to Codex SQLite DB. Default: $HOME/.codex/state_5.sqlite
-  --show-only                 Preview matching rows and rewritten values without updating
-  --no-backup                 Skip creating a .bak file before updating
-  --help                      Show this help
+Options
+  --db PATH
+      SQLite DB path. Default: $HOME/.codex/state_5.sqlite
+  --show-only
+      Preview matches and rewritten values without updating
+  --no-backup
+      Skip backup creation before update
+  --help
+      Show this help
+
+Examples
+  Preview one repo rename
+    sh scripts/codex_migrate.sh \
+      --old-cwd /old/project \
+      --new-cwd /new/project \
+      --show-only
+
+  Apply one repo rename
+    sh scripts/codex_migrate.sh \
+      --old-cwd /old/project \
+      --new-cwd /new/project
+
+  Fix one thread
+    sh scripts/codex_migrate.sh \
+      --thread-id 019cd22e-20a4-7bd2-bf59-c02e84debc35 \
+      --new-cwd /new/project
+
+  Rewrite rollout paths after moving ~/.codex
+    sh scripts/codex_migrate.sh \
+      --all-threads \
+      --old-rollout-prefix /home/olduser/.codex/sessions \
+      --new-rollout-prefix /home/newuser/.codex/sessions
 EOF
 }
 
