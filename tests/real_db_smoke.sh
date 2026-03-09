@@ -3,10 +3,14 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-. "$ROOT_DIR/scripts/_codex_sqlite.sh"
 SOURCE_DB="${CODEX_STATE_DB:-$HOME/.codex/state_5.sqlite}"
 TMP_DIR=$(mktemp -d)
 TEST_DB="$TMP_DIR/state_5.test.sqlite"
+
+sql_quote() {
+  escaped=$(printf '%s' "$1" | sed "s/'/''/g")
+  printf "'%s'" "$escaped"
+}
 
 cleanup() {
   rm -rf "$TMP_DIR"

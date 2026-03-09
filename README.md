@@ -9,7 +9,6 @@ state database.
 codex-session-tools/
 ├── README.md
 ├── scripts/
-│   ├── _codex_sqlite.sh
 │   └── codex_migrate.sh
 └── tests/
     ├── real_db_smoke.sh
