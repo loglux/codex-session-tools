@@ -2,12 +2,16 @@
 
 set -eu
 
-DB_PATH="${CODEX_STATE_DB:-$HOME/.codex/state_5.sqlite}"
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+MIGRATE_SCRIPT="$SCRIPT_DIR/migrate_codex_paths.sh"
 
 usage() {
   cat <<'EOF'
 Usage:
   rebind_codex_thread.sh --thread-id ID --new-cwd PATH [options]
+
+Compatibility wrapper around:
+  migrate_codex_paths.sh --thread-id ID --new-cwd PATH [options]
 
 Options:
   --db PATH          Path to Codex SQLite DB. Default: $HOME/.codex/state_5.sqlite
@@ -19,89 +23,16 @@ Options:
 EOF
 }
 
-THREAD_ID=""
-NEW_CWD=""
-SHOW_ONLY=0
-MAKE_BACKUP=1
-
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    --db)
-      DB_PATH="$2"
-      shift 2
-      ;;
-    --thread-id)
-      THREAD_ID="$2"
-      shift 2
-      ;;
-    --new-cwd)
-      NEW_CWD="$2"
-      shift 2
-      ;;
-    --show-only)
-      SHOW_ONLY=1
-      shift
-      ;;
-    --no-backup)
-      MAKE_BACKUP=0
-      shift
-      ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown argument: $1" >&2
-      usage >&2
-      exit 1
-      ;;
-  esac
-done
-
-if [ -z "$THREAD_ID" ]; then
-  echo "--thread-id is required" >&2
-  usage >&2
+if [ ! -x "$MIGRATE_SCRIPT" ] && [ ! -f "$MIGRATE_SCRIPT" ]; then
+  echo "Main migration script not found: $MIGRATE_SCRIPT" >&2
   exit 1
 fi
 
-if [ ! -f "$DB_PATH" ]; then
-  echo "Codex DB not found: $DB_PATH" >&2
-  exit 1
-fi
+case "${1:-}" in
+  --help|-h)
+    usage
+    exit 0
+    ;;
+esac
 
-if ! command -v sqlite3 >/dev/null 2>&1; then
-  echo "sqlite3 is required" >&2
-  exit 1
-fi
-
-select_sql="select id, cwd, rollout_path, title, created_at, updated_at from threads where id = '$THREAD_ID';"
-thread_row="$(sqlite3 "$DB_PATH" "$select_sql")"
-
-if [ -z "$thread_row" ]; then
-  echo "Thread not found: $THREAD_ID" >&2
-  exit 1
-fi
-
-echo "Current thread record:"
-printf '%s\n' "$thread_row"
-
-if [ "$SHOW_ONLY" -eq 1 ]; then
-  exit 0
-fi
-
-if [ -z "$NEW_CWD" ]; then
-  echo "--new-cwd is required unless --show-only is used" >&2
-  usage >&2
-  exit 1
-fi
-
-if [ "$MAKE_BACKUP" -eq 1 ]; then
-  backup_path="${DB_PATH}.bak-$(date +%Y%m%d-%H%M%S)"
-  cp "$DB_PATH" "$backup_path"
-  echo "Backup created: $backup_path"
-fi
-
-sqlite3 "$DB_PATH" "pragma busy_timeout=5000; update threads set cwd = '$NEW_CWD', updated_at = strftime('%s','now') where id = '$THREAD_ID';"
-
-echo "Updated thread record:"
-sqlite3 "$DB_PATH" "$select_sql"
+exec sh "$MIGRATE_SCRIPT" "$@"

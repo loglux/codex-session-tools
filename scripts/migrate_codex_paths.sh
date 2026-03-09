@@ -2,6 +2,9 @@
 
 set -eu
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SCRIPT_DIR/_codex_sqlite.sh"
+
 DB_PATH="${CODEX_STATE_DB:-$HOME/.codex/state_5.sqlite}"
 OLD_CWD=""
 NEW_CWD=""
@@ -120,11 +123,23 @@ if { [ -n "$OLD_ROLLOUT_PREFIX" ] && [ -z "$NEW_ROLLOUT_PREFIX" ]; } || \
 fi
 
 if [ -n "$THREAD_ID" ]; then
-  where_sql="id = '$THREAD_ID'"
+  THREAD_ID_SQL=$(sql_quote "$THREAD_ID")
+  where_sql="id = $THREAD_ID_SQL"
 elif [ -n "$OLD_CWD" ]; then
-  where_sql="cwd = '$OLD_CWD'"
+  OLD_CWD_SQL=$(sql_quote "$OLD_CWD")
+  where_sql="cwd = $OLD_CWD_SQL"
 else
   where_sql="1 = 1"
+fi
+
+if [ -n "$NEW_CWD" ]; then
+  NEW_CWD_SQL=$(sql_quote "$NEW_CWD")
+fi
+
+if [ -n "$OLD_ROLLOUT_PREFIX" ]; then
+  OLD_ROLLOUT_PREFIX_SQL=$(sql_quote "$OLD_ROLLOUT_PREFIX")
+  NEW_ROLLOUT_PREFIX_SQL=$(sql_quote "$NEW_ROLLOUT_PREFIX")
+  rollout_rewrite_sql="case when rollout_path = $OLD_ROLLOUT_PREFIX_SQL then $NEW_ROLLOUT_PREFIX_SQL when rollout_path like $OLD_ROLLOUT_PREFIX_SQL || '/%' then $NEW_ROLLOUT_PREFIX_SQL || substr(rollout_path, length($OLD_ROLLOUT_PREFIX_SQL) + 1) else rollout_path end"
 fi
 
 select_sql="select id, cwd, rollout_path, title from threads where $where_sql order by created_at desc;"
@@ -140,13 +155,13 @@ printf '%s\n' "$matches"
 
 preview_sql="select id, cwd as current_cwd, "
 if [ -n "$NEW_CWD" ]; then
-  preview_sql="$preview_sql '$NEW_CWD' as rewritten_cwd, "
+  preview_sql="$preview_sql $NEW_CWD_SQL as rewritten_cwd, "
 else
   preview_sql="$preview_sql cwd as rewritten_cwd, "
 fi
 
 if [ -n "$OLD_ROLLOUT_PREFIX" ]; then
-  preview_sql="$preview_sql rollout_path as current_rollout_path, replace(rollout_path, '$OLD_ROLLOUT_PREFIX', '$NEW_ROLLOUT_PREFIX') as rewritten_rollout_path "
+  preview_sql="$preview_sql rollout_path as current_rollout_path, $rollout_rewrite_sql as rewritten_rollout_path "
 else
   preview_sql="$preview_sql rollout_path as current_rollout_path, rollout_path as rewritten_rollout_path "
 fi
@@ -162,16 +177,16 @@ fi
 
 if [ "$MAKE_BACKUP" -eq 1 ]; then
   backup_path="${DB_PATH}.bak-$(date +%Y%m%d-%H%M%S)"
-  cp "$DB_PATH" "$backup_path"
+  backup_sqlite_db "$DB_PATH" "$backup_path"
   echo "Backup created: $backup_path"
 fi
 
 set_sql="updated_at = strftime('%s','now')"
 if [ -n "$NEW_CWD" ]; then
-  set_sql="cwd = '$NEW_CWD', $set_sql"
+  set_sql="cwd = $NEW_CWD_SQL, $set_sql"
 fi
 if [ -n "$OLD_ROLLOUT_PREFIX" ]; then
-  set_sql="rollout_path = replace(rollout_path, '$OLD_ROLLOUT_PREFIX', '$NEW_ROLLOUT_PREFIX'), $set_sql"
+  set_sql="rollout_path = $rollout_rewrite_sql, $set_sql"
 fi
 
 update_sql="pragma busy_timeout=5000; update threads set $set_sql where $where_sql; select changes();"

@@ -17,6 +17,7 @@ database.
 codex-session-tools/
 ├── README.md
 └── scripts/
+    ├── _codex_sqlite.sh
     ├── migrate_codex_paths.sh
     ├── rebind_codex_thread.sh
     └── rebind_codex_threads_by_cwd.sh
@@ -80,7 +81,20 @@ You rewrite `rollout_path` when:
 
 ## Which Script To Use
 
+`scripts/migrate_codex_paths.sh` is the main entrypoint.
+
+The other two scripts are compatibility wrappers for convenience:
+
+- `scripts/rebind_codex_thread.sh`
+- `scripts/rebind_codex_threads_by_cwd.sh`
+
 ### `scripts/rebind_codex_thread.sh`
+
+Compatibility wrapper for:
+
+```sh
+sh scripts/migrate_codex_paths.sh --thread-id ... --new-cwd ...
+```
 
 Use this when you know the exact `thread_id` and only want to fix one thread.
 
@@ -93,6 +107,12 @@ sh scripts/rebind_codex_thread.sh \
 ```
 
 ### `scripts/rebind_codex_threads_by_cwd.sh`
+
+Compatibility wrapper for:
+
+```sh
+sh scripts/migrate_codex_paths.sh --old-cwd ... --new-cwd ...
+```
 
 Use this when one project was renamed or moved and you want to update every
 thread that still points at the old project path.
@@ -107,7 +127,8 @@ sh scripts/rebind_codex_threads_by_cwd.sh \
 
 ### `scripts/migrate_codex_paths.sh`
 
-Use this for general migrations. It is the most flexible script.
+Use this for general migrations. It is the main script and the most flexible
+entrypoint.
 
 It supports three selection modes:
 
@@ -139,6 +160,34 @@ Recommended habit:
 3. Run the real command without `--show-only`.
 
 Use `--no-backup` only if you have a strong reason.
+
+## Test On A Copy Of Your Real Database
+
+If you want extra confidence before running a real migration, you can test the
+scripts against a temporary copy of your actual Codex state database.
+
+This repository includes:
+
+- `tests/smoke.sh` for a synthetic temporary SQLite database
+- `tests/real_db_smoke.sh` for a copied snapshot of your real `state_5.sqlite`
+
+The real-db smoke test:
+
+- copies `$HOME/.codex/state_5.sqlite` into a temporary file
+- runs all three migration helpers against the copy
+- verifies that the original database was not modified
+
+Run it from the repository root:
+
+```sh
+sh tests/real_db_smoke.sh
+```
+
+To point it at another database file:
+
+```sh
+CODEX_STATE_DB=/path/to/state_5.sqlite sh tests/real_db_smoke.sh
+```
 
 ## Common Scenarios
 
